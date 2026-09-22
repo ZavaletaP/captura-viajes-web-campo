@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Captura de Viajes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #f2efe9;
+    --surface: #ffffff;
+    --surface-2: #ebe7df;
+    --border: #ddd7cb;
+    --ink: #262320;
+    --ink-muted: #6f6a61;
+    --accent: #f5670a;
+    --accent-ink: #ffffff;
+    --accent-dim: #fde3cf;
+    --success: #2f7d4f;
+    --success-bg: #e3f2e8;
+    --danger: #c0392b;
+    --danger-bg: #fbe6e3;
+    --locked-bg: #ece9e2;
+    --locked-ink: #a49d8f;
+    --shadow: 0 1px 2px rgba(38,35,32,.06), 0 6px 16px rgba(38,35,32,.08);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #1b1917;
+      --surface: #262320;
+      --surface-2: #302c28;
+      --border: #3c3733;
+      --ink: #f2efe9;
+      --ink-muted: #a89f92;
+      --accent: #ff8a3d;
+      --accent-ink: #201200;
+      --accent-dim: #4a2c14;
+      --success: #6fcf8f;
+      --success-bg: #1e3226;
+      --danger: #ff8f7d;
+      --danger-bg: #3a2320;
+      --locked-bg: #2b2824;
+      --locked-ink: #746c60;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #1b1917;
+    --surface: #262320;
+    --surface-2: #302c28;
+    --border: #3c3733;
+    --ink: #f2efe9;
+    --ink-muted: #a89f92;
+    --accent: #ff8a3d;
+    --accent-ink: #201200;
+    --accent-dim: #4a2c14;
+    --success: #6fcf8f;
+    --success-bg: #1e3226;
+    --danger: #ff8f7d;
+    --danger-bg: #3a2320;
+    --locked-bg: #2b2824;
+    --locked-ink: #746c60;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", system-ui, sans-serif;
+    min-height:100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wrap{
+    max-width:480px;
+    margin:0 auto;
+    padding:18px 16px 40px;
+  }
+  header.top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px 12px;
+    margin-bottom:18px;
+  }
+  .brand{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    min-width:0;
+    flex:1 1 180px;
+  }
+  .brand .eyebrow{ white-space:nowrap; }
+  .brand .eyebrow{
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink-muted);
+    font-weight:600;
+  }
+  .brand h1{
+    font-family:"Big Shoulders Display", sans-serif;
+    font-weight:800;
+    font-size:26px;
+    line-height:1;
+    margin:0;
+    letter-spacing:.01em;
+  }
+  .mixer-badge{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:6px 12px 6px 6px;
+    box-shadow:var(--shadow);
+  }
+  .mixer-badge .dot{
+    width:28px;height:28px;border-radius:50%;
+    background:var(--accent);
+    color:var(--accent-ink);
+    display:flex;align-items:center;justify-content:center;
+    font-family:"Big Shoulders Display",sans-serif;
+    font-weight:700;
+    font-size:14px;
+  }
+  .mixer-badge .id{
+    font-weight:600;
+    font-size:13px;
+    font-variant-numeric: tabular-nums;
+  }
+  .mixer-badge button{
+    background:none;border:none;color:var(--ink-muted);
+    font-size:11px; text-decoration:underline; cursor:pointer; padding:0;
+  }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px;
+  }
+
+  /* --- Pantalla: configurar mixer --- */
+  #screenMixer .card{ display:flex; flex-direction:column; gap:14px; }
+  #screenMixer p{ margin:0; color:var(--ink-muted); font-size:14px; line-height:1.5; }
+  label{ font-size:12px; font-weight:600; color:var(--ink-muted); text-transform:uppercase; letter-spacing:.06em; }
+  input[type=text]{
+    width:100%;
+    font-family:"IBM Plex Sans",sans-serif;
+    font-size:20px;
+    font-weight:600;
+    padding:14px 14px;
+    border-radius:10px;
+    border:1.5px solid var(--border);
+    background:var(--surface-2);
+    color:var(--ink);
+    letter-spacing:.02em;
+  }
+  input[type=text]:focus{ outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+  select{
+    width:100%;
+    font-family:"IBM Plex Sans",sans-serif;
+    font-size:20px;
+    font-weight:600;
+    padding:14px 14px;
+    border-radius:10px;
+    border:1.5px solid var(--border);
+    background:var(--surface-2);
+    color:var(--ink);
+    letter-spacing:.02em;
+    appearance:none;
+    background-image:linear-gradient(45deg, transparent 50%, var(--ink-muted) 50%), linear-gradient(135deg, var(--ink-muted) 50%, transparent 50%);
+    background-position:calc(100% - 22px) center, calc(100% - 16px) center;
+    background-size:6px 6px, 6px 6px;
+    background-repeat:no-repeat;
+  }
+  select:focus{ outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+  select:disabled{ opacity:.6; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .error-text{ margin:0; font-size:13px; color:var(--danger); line-height:1.5; }
+  .link-btn{ background:none; border:none; padding:0; color:var(--danger); font-weight:700; text-decoration:underline; cursor:pointer; font-size:inherit; }
+
+  button.primary{
+    background:var(--accent);
+    color:var(--accent-ink);
+    border:none;
+    border-radius:10px;
+    padding:15px 18px;
+    font-family:"IBM Plex Sans",sans-serif;
+    font-weight:700;
+    font-size:16px;
+    cursor:pointer;
+    transition:transform .08s ease, filter .15s ease;
+  }
+  button.primary:active{ transform:scale(.98); }
+  button.primary:disabled{ filter:grayscale(.4) opacity(.7); cursor:default; }
+
+  /* --- Pantalla: nueva remision --- */
+  #screenNuevo .card{ display:flex; flex-direction:column; gap:14px; }
+
+  /* --- Pantalla: pasos del viaje --- */
+  .trip-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:14px;
+  }
+  .trip-head .label{ font-size:12px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+  .trip-head .value{ font-family:"Big Shoulders Display",sans-serif; font-weight:800; font-size:28px; font-variant-numeric: tabular-nums; }
+
+  ol.steps{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+  .step{
+    display:flex; align-items:center; gap:12px;
+    border-radius:12px;
+    padding:14px;
+    border:1px solid var(--border);
+    background:var(--surface-2);
+  }
+  .step .num{
+    flex:0 0 30px; height:30px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:"Big Shoulders Display",sans-serif; font-weight:700; font-size:14px;
+    background:var(--locked-bg); color:var(--locked-ink);
+  }
+  .step .info{ flex:1; min-width:0; }
+  .step .info .name{ font-weight:600; font-size:15px; }
+  .step .info .time{ font-size:12px; color:var(--ink-muted); font-variant-numeric: tabular-nums; margin-top:1px; }
+  .step .action{ flex:0 0 auto; }
+  .step .action button{
+    border:none; border-radius:9px; padding:10px 16px;
+    font-family:"IBM Plex Sans",sans-serif; font-weight:700; font-size:13px;
+    cursor:pointer;
+  }
+
+  .step.locked{ opacity:.6; }
+  .step.locked .action button{ background:var(--locked-bg); color:var(--locked-ink); cursor:default; }
+
+  .step.current{ border-color:var(--accent); background:var(--accent-dim); box-shadow:0 0 0 1px var(--accent) inset; }
+  .step.current .num{ background:var(--accent); color:var(--accent-ink); }
+  .step.current .action button{ background:var(--accent); color:var(--accent-ink); }
+  .step.current .action button:active{ transform:scale(.96); }
+
+  .step.done{ background:var(--success-bg); border-color:var(--success); }
+  .step.done .num{ background:var(--success); color:#fff; }
+  .step.done .action button{ background:transparent; color:var(--success); cursor:default; font-size:18px; }
+
+  /* --- "No lo registré a tiempo": presets de minutos para el paso actual --- */
+  li.step-antes{ text-align:center; margin-top:-2px; }
+  li.step-antes .link-btn{ font-size:12px; }
+  li.preset-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:-2px; }
+  li.preset-row button.preset-btn{
+    flex:1 1 auto;
+    border:1px solid var(--border);
+    background:var(--surface-2);
+    color:var(--ink);
+    border-radius:9px;
+    padding:10px 8px;
+    font-family:"IBM Plex Sans",sans-serif;
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+  }
+  li.preset-row button.preset-btn:active{ transform:scale(.97); }
+  li.preset-row .link-btn{ flex:1 1 100%; text-align:center; font-size:12px; margin-top:2px; }
+
+  .trip-done-banner{
+    margin-top:16px;
+    text-align:center;
+    background:var(--success-bg);
+    border:1px solid var(--success);
+    color:var(--success);
+    border-radius:12px;
+    padding:16px;
+    font-weight:700;
+  }
+  .trip-done-banner button{
+    margin-top:10px;
+    display:block;
+    width:100%;
+  }
+
+  .cancel-wrap{ text-align:center; margin-top:16px; }
+  .cancel-wrap .link-btn{ font-size:13px; }
+
+  .toast{
+    position:fixed; left:16px; right:16px; bottom:18px;
+    max-width:448px; margin:0 auto;
+    background:var(--danger-bg); color:var(--danger);
+    border:1px solid var(--danger);
+    border-radius:10px; padding:12px 14px;
+    font-size:13px; font-weight:600;
+    box-shadow:var(--shadow);
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    transform:translateY(calc(100% + 40px));
+    transition:transform .25s ease;
+    visibility:hidden;
+  }
+  .toast.show{ visibility:visible; }
+  .toast.show{ transform:translateY(0); }
+  .toast button{ background:none;border:none;color:inherit;font-weight:700;cursor:pointer; }
+
+  .footer-note{
+    text-align:center;
+    margin-top:22px;
+    font-size:11px;
+    color:var(--ink-muted);
+  }
+  [hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">Casa Maestra · Concreto</span>
+      <h1>Captura de Viajes</h1>
+    </div>
+    <div class="mixer-badge" id="mixerBadge" hidden>
+      <span class="dot">🚛</span>
+      <span class="id" id="mixerBadgeId"></span>
+      <button id="btnCambiarMixer" type="button">cambiar</button>
+    </div>
+  </header>
+
+  <section id="screenMixer" hidden>
+    <div class="card">
+      <p>Antes de capturar viajes, indica qué Mixer estás operando. Solo se pide una vez por dispositivo.</p>
+      <div class="field">
+        <label for="inputMixer">Número de Mixer</label>
+        <select id="inputMixer">
+          <option value="">Cargando lista de Mixers…</option>
+        </select>
+      </div>
+      <button class="primary" id="btnGuardarMixer" type="button" disabled>Guardar y continuar</button>
+      <p class="error-text" id="mixerLoadError" hidden>
+        No se pudo cargar la lista de Mixers. Revisa tu conexión y
+        <button type="button" class="link-btn" id="btnReintentarMixers">reintenta</button>.
+      </p>
+    </div>
+  </section>
+
+  <section id="screenNuevo" hidden>
+    <div class="card">
+      <p>Escribe la Remisión que te dieron en planta para iniciar el seguimiento de este viaje.</p>
+      <div class="field">
+        <label for="inputRemision">Remisión</label>
+        <input type="text" id="inputRemision" placeholder="Ej. 0004327" autocomplete="off" inputmode="numeric">
+      </div>
+      <button class="primary" id="btnIniciarViaje" type="button">Iniciar viaje</button>
+    </div>
+  </section>
+
+  <section id="screenTrip" hidden>
+    <div class="card">
+      <div class="trip-head">
+        <div>
+          <div class="label">Remisión</div>
+          <div class="value" id="tripRemision">—</div>
+        </div>
+      </div>
+      <ol class="steps" id="stepsList"></ol>
+      <div class="trip-done-banner" id="tripDoneBanner" hidden>
+        Viaje completado y registrado.
+        <button class="primary" id="btnNuevoViajeDespuesDeCompletado" type="button">Registrar siguiente Remisión</button>
+      </div>
+      <div class="cancel-wrap" id="cancelWrap">
+        <button type="button" class="link-btn" id="btnCancelarViaje">Cancelar viaje</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="footer-note">Los eventos se envían en cuanto ocurren. No cierres esta página durante el viaje.</p>
+</div>
+
+<div class="toast" id="toast">
+  <span id="toastMsg"></span>
+  <button id="toastClose" type="button">✕</button>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxnJmqXNceYw4RKD5qs4rv9gi0vHlQLPK5YaaCUf8V9RZeUK0ZXtGkoJR0yWnLMc_YP/exec";
+
+  var STEPS = [
+    { key: "despacho",      campo: "Despacho",      label: "Despacho de planta" },
+    { key: "llegada",       campo: "Llegada",       label: "Llegada a obra" },
+    { key: "inicioTiro",    campo: "InicioTiro",    label: "Inicio de colado" },
+    { key: "finTiro",       campo: "FinTiro",       label: "Fin de colado" },
+    { key: "salidaObra",    campo: "SalidaObra",    label: "Salida de obra" },
+    { key: "llegadaPlanta", campo: "LlegadaPlanta", label: "Llegada a planta" }
+  ];
+
+  var LS_MIXER = "captura_viajes_mixer";
+  var LS_TRIP = "captura_viajes_activo";
+
+  var elMixerBadge = document.getElementById("mixerBadge");
+  var elMixerBadgeId = document.getElementById("mixerBadgeId");
+  var elScreenMixer = document.getElementById("screenMixer");
+  var elScreenNuevo = document.getElementById("screenNuevo");
+  var elScreenTrip = document.getElementById("screenTrip");
+  var elInputMixer = document.getElementById("inputMixer");
+  var elInputRemision = document.getElementById("inputRemision");
+  var elTripRemision = document.getElementById("tripRemision");
+  var elStepsList = document.getElementById("stepsList");
+  var elTripDoneBanner = document.getElementById("tripDoneBanner");
+  var elCancelWrap = document.getElementById("cancelWrap");
+  var elToast = document.getElementById("toast");
+  var elToastMsg = document.getElementById("toastMsg");
+  var elBtnGuardarMixer = document.getElementById("btnGuardarMixer");
+  var elMixerLoadError = document.getElementById("mixerLoadError");
+
+  var mixersDisponibles = [];
+
+  function getMixer(){ return localStorage.getItem(LS_MIXER) || ""; }
+  function setMixer(v){ localStorage.setItem(LS_MIXER, v); }
+  function clearMixer(){ localStorage.removeItem(LS_MIXER); }
+
+  function getTrip(){
+    try {
+      var raw = localStorage.getItem(LS_TRIP);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function setTrip(t){ localStorage.setItem(LS_TRIP, JSON.stringify(t)); }
+  function clearTrip(){ localStorage.removeItem(LS_TRIP); }
+
+  var toastTimer = null;
+  function showToast(msg){
+    elToastMsg.textContent = msg;
+    elToast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ elToast.classList.remove("show"); }, 5000);
+  }
+  document.getElementById("toastClose").addEventListener("click", function(){
+    elToast.classList.remove("show");
+  });
+
+  function enviar(payload){
+    return fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }).then(function(resp){
+      return resp.json();
+    });
+  }
+
+  // Lista real de Mixers activos (hoja "Mixers" del Sheet, publicada por
+  // sincronizar_celular.py en cada corrida) - el Mixer se ELIGE de aqui,
+  // nunca se escribe libre, para no repetir el caso real del 2026-09-11:
+  // un operador tecleo "CMCRE002" en vez de "CMCRE02" y el viaje no se
+  // pudo enlazar hasta corregirlo a mano en el Sheet.
+  function cargarMixers(){
+    elBtnGuardarMixer.disabled = true;
+    elMixerLoadError.hidden = true;
+    elInputMixer.innerHTML = "<option value=\"\">Cargando lista de Mixers…</option>";
+
+    return fetch(APPS_SCRIPT_URL + "?tipo=mixers")
+      .then(function(resp){ return resp.json(); })
+      .then(function(lista){
+        mixersDisponibles = Array.isArray(lista) ? lista : [];
+        var mixerActual = getMixer();
+        elInputMixer.innerHTML = "<option value=\"\">Selecciona tu Mixer…</option>" +
+          mixersDisponibles.map(function(m){
+            return "<option value=\"" + m + "\">" + m + "</option>";
+          }).join("");
+        elBtnGuardarMixer.disabled = false;
+
+        // El Mixer ya guardado en este telefono pudo quedar invalido (de
+        // antes de este cambio, o si se dio de baja) - se corrige aqui en
+        // vez de dejarlo pasar silencioso.
+        if (mixerActual && mixersDisponibles.indexOf(mixerActual) === -1){
+          clearMixer();
+          showToast("Tu Mixer guardado (" + mixerActual + ") ya no es valido. Selecciona uno de la lista.");
+          render();
+        }
+      })
+      .catch(function(){
+        elInputMixer.innerHTML = "<option value=\"\">No se pudo cargar</option>";
+        elMixerLoadError.hidden = false;
+      });
+  }
+
+  function render(){
+    var mixer = getMixer();
+    if (!mixer){
+      elMixerBadge.hidden = true;
+      elScreenMixer.hidden = false;
+      elScreenNuevo.hidden = true;
+      elScreenTrip.hidden = true;
+      return;
+    }
+    elMixerBadge.hidden = false;
+    elMixerBadgeId.textContent = mixer;
+    elScreenMixer.hidden = true;
+
+    var trip = getTrip();
+    if (!trip){
+      elScreenNuevo.hidden = false;
+      elScreenTrip.hidden = true;
+      elInputRemision.value = "";
+      return;
+    }
+    elScreenNuevo.hidden = true;
+    elScreenTrip.hidden = false;
+    renderTrip(trip);
+  }
+
+  function renderTrip(trip){
+    elTripRemision.textContent = trip.remision;
+    elStepsList.innerHTML = "";
+
+    var allDone = true;
+    var currentAssigned = false;
+    var currentStepObj = null;
+
+    STEPS.forEach(function(step, idx){
+      var done = !!trip.pasos[step.key];
+      if (!done) allDone = false;
+
+      var prevDone = idx === 0 ? true : !!trip.pasos[STEPS[idx-1].key];
+      var isCurrent = !done && prevDone && !currentAssigned;
+      if (isCurrent) { currentAssigned = true; currentStepObj = step; }
+
+      var li = document.createElement("li");
+      li.className = "step " + (done ? "done" : (isCurrent ? "current" : "locked"));
+
+      var num = document.createElement("div");
+      num.className = "num";
+      num.textContent = done ? "✓" : String(idx + 1);
+
+      var info = document.createElement("div");
+      info.className = "info";
+      var name = document.createElement("div");
+      name.className = "name";
+      name.textContent = step.label;
+      info.appendChild(name);
+      if (done){
+        var time = document.createElement("div");
+        time.className = "time";
+        time.textContent = formatHora(trip.pasos[step.key]);
+        info.appendChild(time);
+      }
+
+      var action = document.createElement("div");
+      action.className = "action";
+      var btn = document.createElement("button");
+      btn.type = "button";
+      if (done){
+        btn.textContent = "✓";
+        btn.disabled = true;
+      } else if (isCurrent){
+        btn.textContent = "Registrar";
+        btn.addEventListener("click", function(){ registrarPaso(step); });
+      } else {
+        btn.textContent = "Registrar";
+        btn.disabled = true;
+      }
+      action.appendChild(btn);
+
+      li.appendChild(num);
+      li.appendChild(info);
+      li.appendChild(action);
+      elStepsList.appendChild(li);
+    });
+
+    elTripDoneBanner.hidden = !allDone;
+    elCancelWrap.hidden = allDone;
+
+    // "No lo registré a tiempo": para el paso actual, ofrece registrar con
+    // una hora estimada ("hace N minutos") en vez de "ahora" - para cuando
+    // se le olvidó al operador, se le apagó el telefono, etc. La hora real
+    // la calcula sincronizar_celular.py restando esos minutos a la hora de
+    // Excel al sincronizar (no a la del telefono), y el viaje queda
+    // marcado para que un supervisor lo revise antes de contar como dato
+    // definitivo (ver MOD_OPT_TripEvents.bas, 2026-09-19).
+    if (currentStepObj){
+      if (!presetsAbiertos){
+        var liAntes = document.createElement("li");
+        liAntes.className = "step-antes";
+        var linkAntes = document.createElement("button");
+        linkAntes.type = "button";
+        linkAntes.className = "link-btn";
+        linkAntes.textContent = "No lo registré a tiempo";
+        linkAntes.addEventListener("click", function(){
+          presetsAbiertos = true;
+          render();
+        });
+        liAntes.appendChild(linkAntes);
+        elStepsList.appendChild(liAntes);
+      } else {
+        var liPresets = document.createElement("li");
+        liPresets.className = "preset-row";
+        [5, 10, 15, 30].forEach(function(min){
+          var pb = document.createElement("button");
+          pb.type = "button";
+          pb.className = "preset-btn";
+          pb.textContent = "Hace " + min + " min";
+          pb.addEventListener("click", function(){ registrarPaso(currentStepObj, min); });
+          liPresets.appendChild(pb);
+        });
+        var linkCancelarPreset = document.createElement("button");
+        linkCancelarPreset.type = "button";
+        linkCancelarPreset.className = "link-btn";
+        linkCancelarPreset.textContent = "Cancelar";
+        linkCancelarPreset.addEventListener("click", function(){
+          presetsAbiertos = false;
+          render();
+        });
+        liPresets.appendChild(linkCancelarPreset);
+        elStepsList.appendChild(liPresets);
+      }
+    }
+  }
+
+  function formatHora(iso){
+    try {
+      var d = new Date(iso);
+      return d.toLocaleString("es-MX", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+    } catch (e) { return ""; }
+  }
+
+  var enviando = false;
+  var presetsAbiertos = false;
+
+  function registrarPaso(step, minutosAtras){
+    if (enviando) return;
+    var trip = getTrip();
+    if (!trip) return;
+    var ts = new Date().toISOString();
+
+    enviando = true;
+    deshabilitarBotones(true);
+
+    var payload = {
+      accion: "actualizar",
+      mixer: getMixer(),
+      remision: trip.remision,
+      campo: step.campo,
+      timestamp: ts
+    };
+    if (minutosAtras){ payload.minutosAtras = minutosAtras; }
+
+    enviar(payload).then(function(res){
+      enviando = false;
+      deshabilitarBotones(false);
+      if (res && res.ok){
+        // Con minutosAtras, esta hora local es solo una referencia
+        // aproximada para el propio telefono (formatHora la usa para
+        // mostrarla en la lista) - la hora real la calcula
+        // sincronizar_celular.py con el reloj de Excel, no con este.
+        trip.pasos[step.key] = minutosAtras
+          ? new Date(Date.now() - minutosAtras * 60000).toISOString()
+          : ts;
+        presetsAbiertos = false;
+        setTrip(trip);
+        render();
+      } else {
+        showToast("No se pudo registrar: " + (res && res.error ? res.error : "error desconocido"));
+      }
+    }).catch(function(){
+      enviando = false;
+      deshabilitarBotones(false);
+      showToast("Sin conexión. Verifica tu internet e intenta de nuevo.");
+    });
+  }
+
+  function deshabilitarBotones(disabled){
+    var btnRegistrar = elStepsList.querySelector(".step.current .action button");
+    if (btnRegistrar){
+      btnRegistrar.disabled = disabled;
+      btnRegistrar.textContent = disabled ? "Enviando…" : "Registrar";
+    }
+    var presetBtns = elStepsList.querySelectorAll(".preset-row button");
+    presetBtns.forEach(function(b){ b.disabled = disabled; });
+  }
+
+  document.getElementById("btnGuardarMixer").addEventListener("click", function(){
+    var v = elInputMixer.value;
+    if (!v){ showToast("Selecciona tu Mixer de la lista."); return; }
+    setMixer(v);
+    render();
+  });
+
+  document.getElementById("btnReintentarMixers").addEventListener("click", function(){
+    cargarMixers();
+  });
+
+  document.getElementById("btnCambiarMixer").addEventListener("click", function(){
+    if (getTrip()){
+      showToast("Termina o registra el viaje actual antes de cambiar de Mixer.");
+      return;
+    }
+    clearMixer();
+    render();
+  });
+
+  var btnIniciar = document.getElementById("btnIniciarViaje");
+  btnIniciar.addEventListener("click", function(){
+    if (enviando) return;
+    var remision = elInputRemision.value.trim();
+    if (!remision){ showToast("Escribe la Remisión."); return; }
+
+    enviando = true;
+    btnIniciar.disabled = true;
+    btnIniciar.textContent = "Enviando…";
+    var ts = new Date().toISOString();
+
+    enviar({
+      accion: "crear",
+      mixer: getMixer(),
+      remision: remision,
+      timestamp: ts
+    }).then(function(res){
+      enviando = false;
+      btnIniciar.disabled = false;
+      btnIniciar.textContent = "Iniciar viaje";
+      if (res && res.ok){
+        presetsAbiertos = false;
+        setTrip({ remision: remision, pasos: {} });
+        render();
+      } else {
+        showToast("No se pudo iniciar el viaje: " + (res && res.error ? res.error : "error desconocido"));
+      }
+    }).catch(function(){
+      enviando = false;
+      btnIniciar.disabled = false;
+      btnIniciar.textContent = "Iniciar viaje";
+      showToast("Sin conexión. Verifica tu internet e intenta de nuevo.");
+    });
+  });
+  elInputRemision.addEventListener("keydown", function(e){
+    if (e.key === "Enter") btnIniciar.click();
+  });
+
+  document.getElementById("btnNuevoViajeDespuesDeCompletado").addEventListener("click", function(){
+    presetsAbiertos = false;
+    clearTrip();
+    render();
+  });
+
+  // Salida de emergencia: si un paso no se puede registrar (la fila del
+  // puente ya no existe, quedo mal ligada, o no hay conexion), antes no
+  // habia forma de abandonar el viaje y el telefono se quedaba atorado
+  // (caso real 2026-09-12, CMCRE11/894327). Cancelar SIEMPRE libera el
+  // telefono, aunque el intento de limpiar la fila en el Sheet falle o no
+  // haya red - no bloquea la salida esperando esa respuesta.
+  document.getElementById("btnCancelarViaje").addEventListener("click", function(){
+    var trip = getTrip();
+    if (!trip) return;
+    if (!confirm("¿Cancelar el seguimiento de la Remisión " + trip.remision + "? Los pasos ya registrados no se pierden, pero este teléfono deja de seguir este viaje.")) return;
+
+    enviar({ accion: "cancelar", mixer: getMixer(), remision: trip.remision }).catch(function(){});
+    presetsAbiertos = false;
+    clearTrip();
+    showToast("Viaje cancelado. Puedes iniciar una nueva Remisión.");
+    render();
+  });
+
+  render();
+  cargarMixers();
+})();
+</script>
+</body>
+</html>
