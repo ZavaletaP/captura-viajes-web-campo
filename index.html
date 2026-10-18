@@ -351,6 +351,13 @@
   .linea-box .linea-head .t{ font-weight:700; font-size:16px; }
   .linea-box .linea-head .s{ font-size:12px; color:var(--ink-muted); }
 
+  /* Registros guardados en el telefono por falta de senal (cola sin conexion, 2026-10-18) */
+  .pendientes{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--accent-dim); color:var(--accent); border:1px solid var(--accent);
+    border-radius:12px; padding:10px 12px; margin-bottom:14px; font-size:13px; font-weight:600; line-height:1.35;
+  }
+  .pendientes .link-btn{ color:var(--accent); white-space:nowrap; font-size:13px; }
   .footer-note{
     text-align:center;
     margin-top:22px;
@@ -373,6 +380,11 @@
       <button id="btnCambiarMixer" type="button">cambiar</button>
     </div>
   </header>
+
+  <div class="pendientes" id="pendientes" hidden>
+    <span id="pendientesTxt"></span>
+    <button type="button" class="link-btn" id="btnEnviarPendientes">Enviar ahora</button>
+  </div>
 
   <section id="screenMixer" hidden>
     <div class="card">
@@ -521,7 +533,7 @@
     </div>
   </section>
 
-  <p class="footer-note">Los eventos se envían en cuanto ocurren. No cierres esta página durante el viaje.</p>
+  <p class="footer-note">Los eventos se envían en cuanto ocurren. Si no hay señal, quedan guardados en este teléfono con su hora y se envían solos al volver la conexión. No borres los datos del navegador mientras haya registros pendientes.</p>
 </div>
 
 <div class="toast" id="toast">
@@ -589,14 +601,176 @@
     elToast.classList.remove("show");
   });
 
-  function enviar(payload){
-    return fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    }).then(function(resp){
+  /* ============================================================
+     COLA SIN CONEXION (2026-10-18)
+     ------------------------------------------------------------
+     Una hora capturada sin senal (o con senal tan mala que la peticion
+     no responde) NO se pierde: queda guardada en este telefono con la
+     hora a la que se toco el boton y se manda sola al volver la conexion.
+     - Se guardan los eventos que el operador ya hizo (crear viaje, cada
+       paso, cancelar, y las horas y remision de la bomba). Lo que necesita
+       la respuesta del servidor para seguir (crear servicio externo, agregar
+       o quitar un mixer externo) sigue pidiendo conexion.
+     - Se envian en orden. Si ya hay pendientes, un registro nuevo se
+       agrega al final aunque haya senal, para que la Remision llegue antes
+       que sus pasos.
+     - Cada registro viaja con su hora original (timestamp, y minutosAtras si
+       el operador eligio "hace N min"), enCola = true y enviadoEn (reloj del
+       telefono al reenviar): el puente corrige un reloj desfasado y respeta
+       la hora del toque, no la de llegada (ver horaDeEvento_ en el puente).
+     - Reenviar nunca duplica ni cambia una hora: el puente ignora un
+       registro cuyo campo ya trae hora.
+     - Un registro en vuelo (enviado sin respuesta todavia) se guarda aparte:
+       si la pagina se cierra a medias, se reintenta al abrirla.
+     ============================================================ */
+  var LS_COLA = "captura_viajes_cola";
+  var LS_VUELO = "captura_viajes_en_vuelo";
+  var LS_COLA_ERR = "captura_viajes_cola_error";
+  var ENCOLABLES = ["crear", "actualizar", "cancelar", "campo_servicio_bomba", "hito_bomba"];
+  var ESPERA_MS = 15000;
+  var REINTENTO_MS = 15000;
+  var vaciando = false;
+  var timerCola = null;
+
+  function leerLista(clave){
+    try {
+      var raw = localStorage.getItem(clave);
+      var l = raw ? JSON.parse(raw) : [];
+      return Array.isArray(l) ? l : [];
+    } catch (e) { return []; }
+  }
+  function guardarLista(clave, l){
+    try { localStorage.setItem(clave, JSON.stringify(l)); return true; } catch (e) { return false; }
+  }
+  function leerCola(){ return leerLista(LS_COLA); }
+
+  function postear(payload){
+    var ctl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    var t = ctl ? setTimeout(function(){ ctl.abort(); }, ESPERA_MS) : null;
+    var opciones = { method: "POST", body: JSON.stringify(payload) };
+    if (ctl) opciones.signal = ctl.signal;
+    return fetch(APPS_SCRIPT_URL, opciones).then(function(resp){
+      if (t) clearTimeout(t);
       return resp.json();
+    }, function(err){
+      if (t) clearTimeout(t);
+      throw err;
     });
   }
+
+  function encolar(payload){
+    var cola = leerCola();
+    cola.push({ id: idUnico(), payload: payload });
+    var ok = guardarLista(LS_COLA, cola) && leerCola().length === cola.length;
+    pintarPendientes();
+    return ok;
+  }
+
+  function quitarDeCola(id){
+    guardarLista(LS_COLA, leerCola().filter(function(i){ return i.id !== id; }));
+  }
+
+  function pintarPendientes(){
+    var n = leerCola().length;
+    var el = document.getElementById("pendientes");
+    if (!el) return;
+    el.hidden = (n === 0);
+    if (n === 0) return;
+    var txt;
+    if (vaciando) txt = "Enviando " + n + " registro" + (n === 1 ? "" : "s") + " guardado" + (n === 1 ? "" : "s") + "…";
+    else if (typeof navigator !== "undefined" && navigator.onLine === false)
+      txt = "Sin señal: " + n + " registro" + (n === 1 ? "" : "s") + " guardado" + (n === 1 ? "" : "s") + " en este teléfono. Se enviar" + (n === 1 ? "á" : "án") + " solo" + (n === 1 ? "" : "s") + " al volver la conexión.";
+    else
+      txt = n + " registro" + (n === 1 ? "" : "s") + " guardado" + (n === 1 ? "" : "s") + " en este teléfono, pendiente" + (n === 1 ? "" : "s") + " de enviar.";
+    document.getElementById("pendientesTxt").textContent = txt;
+  }
+
+  function programarReintento(){
+    clearTimeout(timerCola);
+    if (leerCola().length) timerCola = setTimeout(vaciarCola, REINTENTO_MS);
+  }
+
+  function vaciarCola(){
+    if (vaciando) return;
+    if (!leerCola().length){ pintarPendientes(); return; }
+    vaciando = true;
+    pintarPendientes();
+    (function siguiente(){
+      var cola = leerCola();
+      if (!cola.length){ vaciando = false; pintarPendientes(); return; }
+      var item = cola[0];
+      var p = {};
+      for (var k in item.payload){ if (Object.prototype.hasOwnProperty.call(item.payload, k)) p[k] = item.payload[k]; }
+      p.enCola = true;
+      p.enviadoEn = new Date().toISOString();
+      postear(p).then(function(res){
+        quitarDeCola(item.id);
+        if (!(res && res.ok)){
+          // El puente lo rechazo (no es falta de conexion): reintentarlo no lo arregla.
+          var errs = leerLista(LS_COLA_ERR);
+          errs.push({ cuando: new Date().toISOString(), payload: item.payload, error: (res && res.error) || "error desconocido" });
+          guardarLista(LS_COLA_ERR, errs.slice(-20));
+          showToast("Un registro guardado sin señal no se pudo enviar: " + ((res && res.error) || "error desconocido"));
+        }
+        siguiente();
+      }).catch(function(){
+        vaciando = false;
+        pintarPendientes();
+        programarReintento();
+      });
+    })();
+  }
+
+  // Un registro que quedo en vuelo cuando se cerro la pagina vuelve a la cola
+  // (reenviarlo es seguro: el puente no duplica ni cambia horas ya guardadas).
+  function recuperarEnVuelo(){
+    var v = leerLista(LS_VUELO);
+    if (!v.length) return;
+    var cola = leerCola();
+    v.forEach(function(item){
+      if (!cola.some(function(c){ return c.id === item.id; })) cola.push(item);
+    });
+    guardarLista(LS_COLA, cola);
+    guardarLista(LS_VUELO, []);
+  }
+
+  function enviar(payload){
+    var encolable = ENCOLABLES.indexOf(payload.accion) !== -1;
+
+    // Con pendientes por delante, este registro se forma detras de ellos.
+    if (encolable && leerCola().length){
+      if (encolar(payload)){
+        vaciarCola();
+        return Promise.resolve({ ok: true, enCola: true });
+      }
+    }
+
+    var enVuelo = null;
+    if (encolable){
+      enVuelo = { id: idUnico(), payload: payload };
+      guardarLista(LS_VUELO, [enVuelo]);
+    }
+    return postear(payload).then(function(res){
+      if (enVuelo) guardarLista(LS_VUELO, []);
+      return res;
+    }, function(err){
+      if (enVuelo) guardarLista(LS_VUELO, []);
+      if (encolable && encolar(payload)){
+        showToast("Sin señal: la hora quedó guardada en el teléfono y se enviará sola al volver la conexión.");
+        programarReintento();
+        return { ok: true, enCola: true };
+      }
+      throw err;
+    });
+  }
+
+  window.addEventListener("online", vaciarCola);
+  window.addEventListener("offline", pintarPendientes);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) vaciarCola(); });
+  document.getElementById("btnEnviarPendientes").addEventListener("click", function(){
+    if (vaciando){ showToast("Ya se están enviando."); return; }
+    vaciarCola();
+  });
 
   // Lista real de Mixers activos (hoja "Mixers" del Sheet, publicada por
   // sincronizar_celular.py en cada corrida) - el Mixer se ELIGE de aqui,
@@ -802,8 +976,9 @@
       if (res && res.ok){
         // Con minutosAtras, esta hora local es solo una referencia
         // aproximada para el propio telefono (formatHora la usa para
-        // mostrarla en la lista) - la hora real la calcula
-        // sincronizar_celular.py con el reloj de Excel, no con este.
+        // mostrarla en la lista) - la hora que queda en el Sheet la calcula
+        // el puente (horaDeEvento_), con el reloj del servidor o, si el
+        // registro estuvo en la cola sin conexion, con la hora del toque.
         trip.pasos[step.key] = minutosAtras
           ? new Date(Date.now() - minutosAtras * 60000).toISOString()
           : ts;
@@ -1450,7 +1625,10 @@
     });
   });
 
+  recuperarEnVuelo();
+  pintarPendientes();
   render();
+  vaciarCola();
   if (getRol() === "bomba"){
     if (!getBomba()) cargarBombas(); else cargarServicios();
   } else {
