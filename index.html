@@ -243,6 +243,8 @@
   .step.omitido .action button{ background:transparent; color:var(--locked-ink); cursor:default; font-size:12px; }
   .aviso-traspaleo{ margin:0 0 12px; padding:10px 12px; border-radius:10px; border:1px solid var(--accent); background:var(--accent-dim); font-size:14px; }
   .traspaleo-wrap{ text-align:center; margin-top:14px; }
+  .check-recibi{ display:flex; align-items:center; gap:8px; font-size:15px; }
+  .check-recibi input{ width:20px; height:20px; }
   .step.locked .action button{ background:var(--locked-bg); color:var(--locked-ink); cursor:default; }
 
   .step.current{ border-color:var(--accent); background:var(--accent-dim); box-shadow:0 0 0 1px var(--accent) inset; }
@@ -511,6 +513,18 @@
       <div class="field">
         <label for="inputRemision">Remisión</label>
         <input type="text" id="inputRemision" placeholder="Ej. 0004327" autocomplete="off" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label class="check-recibi"><input type="checkbox" id="chkRecibi"> Recibí la carga de otro mixer (traspaleo)</label>
+      </div>
+      <div class="field" id="fieldDesde" hidden>
+        <label for="selDesde">Continúo desde el paso</label>
+        <select id="selDesde">
+          <option value="llegada">Llegada a obra</option>
+          <option value="inicioTiro">Inicio de colado</option>
+          <option value="finTiro">Fin de colado</option>
+          <option value="salidaObra">Salida de obra</option>
+        </select>
       </div>
       <button class="primary" id="btnIniciarViaje" type="button">Iniciar viaje</button>
       <div class="role-switch">
@@ -837,6 +851,8 @@
       elScreenNuevo.hidden = false;
       elScreenTrip.hidden = true;
       elInputRemision.value = "";
+      document.getElementById("chkRecibi").checked = false;
+      document.getElementById("fieldDesde").hidden = true;
       return;
     }
     elScreenNuevo.hidden = true;
@@ -852,16 +868,22 @@
     var currentAssigned = false;
     var currentStepObj = null;
     var traspaleo = !!trip.traspaleo;
+    // Viaje recibido de otro mixer (2026-10-28): los pasos anteriores a donde continua este mixer
+    // los hizo el anterior; aqui salen como "Mixer anterior" y no se piden.
+    var desdeIdx = -1;
+    STEPS.forEach(function(st, k){ if (trip.desde && st.key === trip.desde) desdeIdx = k; });
 
     STEPS.forEach(function(step, idx){
       var done = !!trip.pasos[step.key];
       var omitido = false;
-      var prevDone = idx === 0 ? true : !!trip.pasos[STEPS[idx-1].key];
-      if (traspaleo && !done){
+      var prevDone = idx === 0 ? true : (!!trip.pasos[STEPS[idx-1].key] || (idx - 1) < desdeIdx);
+      var heredado = !done && idx < desdeIdx;
+      if (heredado) omitido = true;
+      if (traspaleo && !done && !heredado){
         // Traspaleo (2026-10-28): este mixer ya no hace Inicio ni Fin de colado. Si habia llegado a la
         // obra registra su Salida de obra y luego su Llegada a planta; si no habia llegado, solo la
         // Llegada a planta. Lo demas se omite.
-        var llego = !!trip.pasos.llegada;
+        var llego = !!trip.pasos.llegada || desdeIdx > 1;
         if (step.key === "llegadaPlanta") prevDone = llego ? !!trip.pasos.salidaObra : true;
         else if (step.key === "salidaObra") { prevDone = llego; omitido = !llego; }
         else omitido = true;
@@ -899,7 +921,7 @@
         btn.textContent = "✓";
         btn.disabled = true;
       } else if (omitido){
-        btn.textContent = "No aplica";
+        btn.textContent = heredado ? "Mixer anterior" : "No aplica";
         btn.disabled = true;
       } else if (isCurrent){
         btn.textContent = "Registrar";
@@ -1051,6 +1073,10 @@
     render();
   });
 
+  document.getElementById("chkRecibi").addEventListener("change", function(){
+    document.getElementById("fieldDesde").hidden = !this.checked;
+  });
+
   var btnIniciar = document.getElementById("btnIniciarViaje");
   btnIniciar.addEventListener("click", function(){
     if (enviando) return;
@@ -1073,7 +1099,7 @@
       btnIniciar.textContent = "Iniciar viaje";
       if (res && res.ok){
         presetsAbiertos = false;
-        setTrip({ remision: remision, pasos: {} });
+        setTrip({ remision: remision, pasos: {}, desde: document.getElementById("chkRecibi").checked ? document.getElementById("selDesde").value : "" });
         render();
       } else {
         showToast("No se pudo iniciar el viaje: " + (res && res.error ? res.error : "error desconocido"));
